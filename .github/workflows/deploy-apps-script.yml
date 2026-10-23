@@ -15,24 +15,50 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install clasp
         run: npm install --global @google/clasp
 
-      - name: Configure clasp from GitHub Secrets
+      - name: Validate credentials and configure clasp
         shell: bash
         env:
           GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
           set -euo pipefail
-          if [[ -z "$GAS_SCRIPT_ID" || -z "$CLASPRC_JSON" ]]; then
-            echo "::error::Add GAS_SCRIPT_ID and CLASPRC_JSON in repository Actions secrets."
+          if [[ -z "$GAS_SCRIPT_ID" ]]; then
+            echo "::error::Missing repository Actions secret GAS_SCRIPT_ID. Set it to the Apps Script project Script ID."
             exit 1
           fi
-          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
-          chmod 600 "$HOME/.clasprc.json"
+          if [[ -z "$CLASPRC_JSON" ]]; then
+            echo "::error::Missing repository Actions secret CLASPRC_JSON. Add the full JSON from ~/.clasprc.json after running clasp login."
+            exit 1
+          fi
+
+          # Parse and validate locally. Never print the secret or token to the action log.
+          node <<'NODE'
+          const fs = require('fs');
+          const raw = (process.env.CLASPRC_JSON || '').trim().replace(/^\uFEFF/, '');
+          let credentials;
+          try {
+            credentials = JSON.parse(raw);
+          } catch (error) {
+            console.error('CLASPRC_JSON is not valid JSON. The run previously failed because this secret began with Thai text ("ข้อมูลยืนย...").');
+            console.error('Fix: run "clasp login" on your own computer, open the generated ~/.clasprc.json (Windows: %USERPROFILE%\\.clasprc.json), then copy the entire JSON object into GitHub Settings > Secrets and variables > Actions > CLASPRC_JSON.');
+            console.error('Do not paste instructions, a filename, a label, or the contents of this chat. Never share the file in chat or commit it to the repository.');
+            process.exit(1);
+          }
+          if (!credentials || typeof credentials !== 'object' ||
+              !credentials.token || typeof credentials.token !== 'object' ||
+              !credentials.oauth2ClientSettings || typeof credentials.oauth2ClientSettings !== 'object') {
+            console.error('CLASPRC_JSON is JSON but does not have the expected clasp credentials structure (token and oauth2ClientSettings). Copy the complete generated ~/.clasprc.json file.');
+            process.exit(1);
+          }
+          const out = process.env.HOME + '/.clasprc.json';
+          fs.writeFileSync(out, JSON.stringify(credentials), { mode: 0o600 });
+          NODE
+
           node -e 'require("fs").writeFileSync(".clasp.json", JSON.stringify({scriptId: process.env.GAS_SCRIPT_ID, rootDir: "."}, null, 2))'
 
       - name: Push source to Apps Script
