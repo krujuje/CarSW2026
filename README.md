@@ -1,36 +1,64 @@
 # ระบบจองรถส่วนกลาง — โรงเรียนสุวรรณภูมิวิทยาลัย
 
-โปรเจกต์นี้แยกเป็น 2 ส่วน:
+ซอร์สโค้ด Google Apps Script Web App ซึ่งเชื่อม Google Sheets, Google Slides, Drive และ Gmail/MailApp โดยใช้ GitHub เป็นที่เก็บ source และ GitHub Actions สำหรับสั่ง push/deploy ไปยัง Apps Script
 
-1. **Frontend** สำหรับเปิดหน้าเว็บ (GitHub Pages เป็นตัวเลือกได้)
-2. **Backend** ทำงานด้วย Google Apps Script เพื่อเชื่อม Google Sheets, Slides, Drive และ Gmail
+> **สำคัญ:** GitHub Pages ใช้โฮสต์ไฟล์ static เท่านั้น จึงไม่รัน `Code.gs` หรือ `google.script.run` โดยตรง ระบบนี้ใช้ Google Apps Script เป็น runtime; GitHub เป็นที่เก็บ source และตัวสั่ง deploy
 
-> GitHub Pages ให้บริการไฟล์หน้าเว็บแบบ static เท่านั้น ไม่สามารถรัน `Code.gs` โดยตรงหรือซ่อนข้อมูลลับได้ สำหรับระบบนี้ให้ใช้ Google Apps Script Web App เป็น backend
+## ไฟล์หลัก
 
-## แนะนำวิธีติดตั้ง (Apps Script เป็นแอปหลัก)
+- `Code.gs` — Backend / Google Services / ระบบจองและแอดมิน
+- `Index.html` — UI responsive, ฟอร์มจอง, Dashboard, ปฏิทิน และหน้าจัดการ
+- `appsscript.json` — manifest สำหรับ Apps Script
+- `.github/workflows/deploy-apps-script.yml` — workflow สำหรับ deploy จาก GitHub Actions
 
-1. เปิด [Google Apps Script](https://script.google.com/) และสร้างโปรเจกต์ใหม่
-2. เพิ่มไฟล์ `Code.gs` และไฟล์ HTML ชื่อ `Index` จากชุดโค้ดต้นฉบับที่ผู้ดูแลระบบตรวจสอบแล้ว
-3. ตรวจสอบค่า `SHEET_ID`, `SLIDE_TEMPLATE_ID` และ `DRIVE_FOLDER_ID` ในส่วนตั้งค่าของ backend
-4. เรียกใช้ `setupDatabase()` เพียงครั้งเดียวสำหรับฐานข้อมูลใหม่ และอนุญาตสิทธิ์ Google Services ตามที่ระบบร้องขอ
-5. ทดสอบการจองด้วยข้อมูลสมมติ ก่อนใช้ข้อมูลจริง
-6. เลือก **Deploy → New deployment → Web app** และกำหนด Execute as / Who has access ให้เหมาะสมกับนโยบายโรงเรียน
-7. เปิด URL Web App ที่ Deploy แล้ว และทดสอบการจอง PDF อีเมล และระบบแอดมิน
+## 1. ตั้งค่า Google Apps Script
 
-## ใช้ GitHub Pages เป็นหน้าเว็บ
+เปิดโปรเจกต์ Apps Script ที่ต้องการใช้เป็น backend แล้วไปที่ **Project Settings → Script Properties** กำหนดค่าต่อไปนี้ ค่าเหล่านี้ให้เก็บใน Apps Script เท่านั้น ห้าม commit ลง repository:
 
-หากต้องการโฮสต์หน้าเว็บบน GitHub Pages จะต้องปรับ frontend ให้เรียก backend ผ่าน endpoint HTTPS ที่ออกแบบมาโดยเฉพาะ พร้อมการตรวจสอบสิทธิ์, CORS และ CSRF ที่เหมาะสม ห้ามใช้ JSONP สำหรับการแก้ไขข้อมูลสำคัญ และห้ามใส่รหัสผ่าน/token/API secret หรือ Script Properties ลงในไฟล์ frontend หรือ repository สาธารณะ
+| Property | ความหมาย |
+|---|---|
+| `SHEET_ID` | ID ของ Google Spreadsheet ฐานข้อมูล |
+| `SLIDE_TEMPLATE_ID` | ID ของ Google Slides Template ใบจอง |
+| `DRIVE_FOLDER_ID` | ID โฟลเดอร์ Drive สำหรับ PDF |
+| `ADMIN_EMAILS` | อีเมลแจ้งเตือน คั่นแต่ละอีเมลด้วย comma |
+| `MASTER_ADMIN_INITIAL_PASSWORD` | รหัสผ่านเริ่มต้นส่วนตัว อย่างน้อย 10 ตัวอักษร ใช้ครั้งเดียว |
+| `ADMIN_USERNAME` | ชื่อผู้ใช้แอดมินหลัก ปกติใช้ `admin` |
 
-หน้าเว็บที่ใช้ `google.script.run` ทำงานได้เมื่อ HTML ถูกเสิร์ฟจาก Google Apps Script HTML Service โดยตรงเท่านั้น; หากย้าย HTML ไป GitHub Pages ต้องเปลี่ยนวิธีเชื่อม backend ก่อน
+ตั้งค่า Script Properties ก่อนรัน `setupDatabase()` ครั้งแรก เพราะขั้นตอน setup ต้องเข้าถึง Spreadsheet และอีเมลแจ้งเตือน
 
-## ความปลอดภัยก่อนเผยแพร่
+1. เปิด Apps Script Editor
+2. เพิ่มไฟล์ `Code.gs` และ HTML file ชื่อ `Index` โดยใช้โค้ดจาก repository นี้
+3. ตั้งค่า Script Properties ตามตาราง
+4. รัน `setupDatabase()` และอนุญาตสิทธิ์ Google Services
+5. Deploy → New deployment → Web app แล้วทดสอบกับข้อมูลสมมติก่อนใช้จริง
 
-- ห้าม commit รหัสผ่าน, session token, app secrets หรือข้อมูลผู้จองจริง
-- ใช้ repository Private หากเก็บข้อมูลที่ไม่ควรเปิดเผย
-- ใช้รหัสผ่านแอดมินแบบไม่ซ้ำและบังคับเปลี่ยนรหัสเริ่มต้น
-- จำกัดผู้มีสิทธิ์ใช้ Web App และทดสอบการอนุมัติจากบัญชีที่ได้รับสิทธิ์
-- ลิงก์ PDF ที่มีข้อมูลบุคคลควรจำกัดสิทธิ์การเข้าถึง ไม่ควรตั้งเป็น Anyone with the link โดยไม่มีการพิจารณานโยบายข้อมูลส่วนบุคคล
+หากเป็นระบบเดิมที่มีฐานข้อมูลและบัญชีอยู่แล้ว ไม่ต้องรัน setup ซ้ำโดยไม่จำเป็น ให้สำรองข้อมูลก่อนอัปเดต และตรวจสอบ Script Properties ให้ครบ
 
-## สถานะ
+### รีเซ็ตรหัสผ่านแอดมินหลัก
 
-README นี้เป็นคู่มือติดตั้ง ไม่ได้ยืนยันว่า backend ถูก Deploy หรือเชื่อม Google Services สำเร็จแล้ว
+กำหนด `MASTER_ADMIN_RESET_PASSWORD` เป็นรหัสใหม่อย่างน้อย 10 ตัวอักษรใน Script Properties แล้วรัน `repairMasterAdminLogin()` จาก Apps Script Editor ด้วยบัญชีเจ้าของโปรเจกต์ ฟังก์ชันใช้ค่านี้ครั้งเดียวและลบทิ้งหลังตั้งรหัสผ่านสำเร็จ
+
+## 2. ตั้งค่า GitHub Actions
+
+ก่อนเริ่ม ต้องมีสิทธิ์แก้ไข Apps Script project และอนุญาต OAuth ให้ `clasp` ด้วยบัญชี Google ที่เป็นเจ้าของ Apps Script
+
+ใน GitHub เปิด **Settings → Secrets and variables → Actions → New repository secret** แล้วเพิ่ม:
+
+- `GAS_SCRIPT_ID` — Script ID ของโปรเจกต์ Apps Script (ดูใน Apps Script Project Settings)
+- `CLASPRC_JSON` — เนื้อหาไฟล์ `~/.clasprc.json` ที่สร้างจากการล็อกอิน `clasp` ของบัญชี Google เจ้าของโปรเจกต์
+- `GAS_DEPLOYMENT_ID` — ไม่บังคับในครั้งแรก; เมื่อมี deployment แล้วให้บันทึก Deployment ID ที่ต้องการอัปเดต เพื่อรักษา URL เดิม
+
+ห้าม commit `.clasprc.json`, `.clasp.json`, access token, รหัสผ่าน, Script Properties หรือข้อมูลผู้จองจริง
+
+จากนั้นไปที่ **Actions → Deploy Google Apps Script → Run workflow** เพื่อ push source และ deploy
+
+ถ้ายังไม่มี `GAS_DEPLOYMENT_ID` workflow จะสร้าง deployment ใหม่; หากต้องการรักษา URL เดิม ให้เพิ่ม ID ของ deployment เดิมเป็น secret ก่อนรันครั้งต่อไป
+
+## 3. ความปลอดภัยและการทดสอบ
+
+- โค้ดใน repository ไม่ฝัง Spreadsheet ID, Slides ID, Folder ID, รายการอีเมลแอดมิน หรือรหัสผ่าน
+- จำกัดสิทธิ์เข้าถึง Web App ตามนโยบายของโรงเรียน
+- ไฟล์ PDF มีข้อมูลส่วนบุคคล ควรตั้งสิทธิ์ Drive ให้เหมาะสม
+- ทดสอบการจองทับซ้อน, การอนุมัติ, การคืนรถ, การสร้าง PDF, การส่งอีเมล และการจัดการแอดมิน ก่อนให้บุคลากรใช้จริง
+
+GitHub Actions สามารถ push/deploy source ได้เมื่อ secrets และการอนุญาต OAuth ถูกตั้งค่าแล้วเท่านั้น และไม่ได้ยืนยันโดยตัวมันเองว่าบริการ Sheets/Slides/Drive/Gmail ทำงานครบจนกว่าจะทดสอบในบัญชี Google จริง
