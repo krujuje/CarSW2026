@@ -1,0 +1,51 @@
+name: Deploy Google Apps Script
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install clasp
+        run: npm install --global @google/clasp
+
+      - name: Configure clasp from GitHub Secrets
+        shell: bash
+        env:
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GAS_SCRIPT_ID" || -z "$CLASPRC_JSON" ]]; then
+            echo "::error::Add GAS_SCRIPT_ID and CLASPRC_JSON in repository Actions secrets."
+            exit 1
+          fi
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          chmod 600 "$HOME/.clasprc.json"
+          node -e 'require("fs").writeFileSync(".clasp.json", JSON.stringify({scriptId: process.env.GAS_SCRIPT_ID, rootDir: "."}, null, 2))'
+
+      - name: Push source to Apps Script
+        run: clasp push --force
+
+      - name: Create or update web deployment
+        shell: bash
+        env:
+          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$GAS_DEPLOYMENT_ID" ]]; then
+            clasp deploy -i "$GAS_DEPLOYMENT_ID" -d "GitHub Actions deployment"
+          else
+            clasp deploy -d "GitHub Actions deployment"
+          fi
