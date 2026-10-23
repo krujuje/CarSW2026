@@ -42,6 +42,14 @@
 
 ก่อนเริ่ม ต้องมีสิทธิ์แก้ไข Apps Script project และอนุญาต OAuth ให้ `clasp` ด้วยบัญชี Google ที่เป็นเจ้าของ Apps Script
 
+ในคอมพิวเตอร์ส่วนตัวของผู้ดูแล ทำขั้นตอนนี้ก่อนสร้าง Secret:
+
+1. ติดตั้ง Node.js และรัน `npm install --global @google/clasp`
+2. รัน `clasp login` แล้วเลือกบัญชี Google ที่มีสิทธิ์แก้ไข Apps Script project
+3. เปิดไฟล์ credential ที่ clasp สร้างขึ้น: Windows `%USERPROFILE%\\.clasprc.json`; macOS/Linux `~/.clasprc.json`
+4. คัดลอก **เนื้อหา JSON ทั้งก้อน** ซึ่งมักมี property `token` และ `oauth2ClientSettings` ใส่ใน Secret ชื่อ `CLASPRC_JSON` โดยตรง ห้ามพิมพ์คำอธิบายหรือข้อความอื่นแทนไฟล์ และห้ามส่งไฟล์นี้ให้ผู้อื่น
+5. อย่านำเนื้อหา credential ไปวางใน chat, issue, commit หรือ log
+
 ใน GitHub เปิด **Settings → Secrets and variables → Actions → New repository secret** แล้วเพิ่ม:
 
 - `GAS_SCRIPT_ID` — Script ID ของโปรเจกต์ Apps Script (ดูใน Apps Script Project Settings)
