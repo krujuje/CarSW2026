@@ -92,7 +92,14 @@ const DEPARTMENTS = [
 ];
 
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index')
+  // ใช้ Index.html ในโปรเจกต์ที่ติดตั้งตรงจาก Apps Script หรือ App.html จาก GitHub
+  let page;
+  try {
+    page = HtmlService.createHtmlOutputFromFile('Index');
+  } catch (indexError) {
+    page = HtmlService.createHtmlOutputFromFile('App');
+  }
+  return page
     .setTitle('ระบบจองรถส่วนกลาง | โรงเรียนสุวรรณภูมิวิทยาลัย')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
