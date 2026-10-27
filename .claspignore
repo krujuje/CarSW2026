@@ -1,6 +1,7 @@
 node_modules/**
 .git/**
 .github/**
+index.html
 README.md
 .gitignore
 .claspignore
