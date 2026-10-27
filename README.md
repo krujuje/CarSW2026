@@ -7,7 +7,8 @@
 ## ไฟล์หลัก
 
 - `Code.gs` — Backend / Google Services / ระบบจองและแอดมิน
-- `Index.html` — UI responsive, ฟอร์มจอง, Dashboard, ปฏิทิน และหน้าจัดการ
+- `App.html` — UI responsive ที่ใช้ใน repository สำหรับ Google Apps Script; `index.html` ตัวพิมพ์เล็กเป็น wrapper ของ GitHub Pages และถูก `.claspignore` กันออกจากการ push ไป Apps Script
+- `Index.html` — ไฟล์หน้าเว็บชื่อ Index สำหรับติดตั้งโดยตรงจากชุดดาวน์โหลดในแชต
 - `appsscript.json` — manifest สำหรับ Apps Script
 - `.github/workflows/deploy-apps-script.yml` — workflow สำหรับ deploy จาก GitHub Actions
 
